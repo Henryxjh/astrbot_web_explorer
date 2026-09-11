@@ -28,6 +28,8 @@ class SiteRule:
         aliases = {
             ("wiki", "mediawiki"): "mediawiki",
             ("code_forge", "github"): "github",
+            ("game_wiki", "mcmod"): "mcmod",
+            ("documentation", "readthedocs"): "readthedocs",
         }
         return aliases.get((adapter, driver), driver or adapter)
 

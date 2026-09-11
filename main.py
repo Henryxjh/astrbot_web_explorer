@@ -55,8 +55,8 @@ class WebExplorerPlugin(Star):
     ) -> str:
         """在具有专用适配器的网站内搜索内容。
 
-        当前支持 GitHub 和 MediaWiki。GitHub 的 kind 可填写 auto、repositories、
-        issues、code 或 commits；其他网站填写 auto。
+        当前支持 GitHub、MediaWiki、MC百科和 Read the Docs。GitHub 的 kind
+        可填写 auto、repositories、issues、code 或 commits；其他网站填写 auto。
 
         Args:
             query(string): 搜索关键词和限定条件。

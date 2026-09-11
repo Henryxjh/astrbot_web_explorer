@@ -1,11 +1,11 @@
 # AstrBot 网页探索器
 
-为 AstrBot 提供模块化的只读网页探索能力。第一版包含 GitHub、MediaWiki、通用网页读取，以及默认关闭的 Chawan 兜底。
+为 AstrBot 提供模块化的只读网页探索能力。内置 GitHub、MediaWiki、MC百科、Read the Docs、通用网页读取，以及默认关闭的 Chawan 兜底。
 
 ## 工具
 
 - `open_web_page`：读取 URL，返回正文、页面 ID 和编号链接。
-- `search_web_site`：搜索 GitHub 或 MediaWiki；GitHub 支持 `repositories`、`issues`、`code`、`commits`。
+- `search_web_site`：搜索 GitHub、MediaWiki、MC百科或 Read the Docs；GitHub 支持 `repositories`、`issues`、`code`、`commits`。
 - `follow_web_link`：通过页面 ID 和 `L1` 形式的链接编号继续访问。
 - `find_in_web_page`：在会话缓存页面中查找文字。
 
@@ -15,6 +15,8 @@
 /webopen https://github.com/openai/codex
 /websearch https://github.com/openai/codex websocket error
 /websearch https://wiki.archlinux.org systemd
+/websearch https://www.mcmod.cn Applied Energistics
+/websearch https://mcmod.readthedocs.io 模组添加
 /webfollow p_ab12cd34 L1
 /webfind p_ab12cd34 websocket
 ```
@@ -77,6 +79,10 @@ data/plugin_data/astrbot_web_explorer/site_rules.json
 | `code_forge` | `github` | GitHub 分类写法 |
 | `mediawiki` | 可省略 | MediaWiki Action API |
 | `wiki` | `mediawiki` | Wiki 分类写法 |
+| `mcmod` | 可省略 | MC百科模组、资料页面及站内搜索 |
+| `game_wiki` | `mcmod` | MC百科分类写法 |
+| `readthedocs` | 可省略 | Read the Docs 正文及服务端全文搜索 |
+| `documentation` | `readthedocs` | 文档站分类写法 |
 | `generic` | 可省略 | 通用网页读取 |
 | `chawan` | 可省略 | Chawan 渲染，仍需在 WebUI 启用和加入白名单 |
 
@@ -166,11 +172,43 @@ data/plugin_data/astrbot_web_explorer/site_rules.json
 
 还需要在 WebUI 中启用 Chawan，并把 `dynamic.example.com` 加入 Chawan 域名白名单；需要执行脚本时再开启 JavaScript。仅填写 JSON 不会绕过白名单。
 
+### MC百科示例
+
+MC百科默认会自动使用专用适配器。如果曾为它配置 Chawan，应将对应规则改成：
+
+```json
+{
+  "host": "www.mcmod.cn",
+  "adapter": "mcmod",
+  "priority": 200,
+  "fallback": true,
+  "enabled": true
+}
+```
+
+站内搜索使用 `https://search.mcmod.cn`，无需执行 JavaScript。
+
+### Read the Docs 示例
+
+`*.readthedocs.io` 等托管域名会自动识别；带有 Read the Docs 元数据的自定义域名也会自动识别。需要显式配置时可以使用：
+
+```json
+{
+  "host": "docs.example.com",
+  "adapter": "readthedocs",
+  "priority": 200,
+  "fallback": true,
+  "enabled": true
+}
+```
+
+站内搜索使用 Read the Docs v3 服务端搜索 API，并自动限定到页面元数据声明的项目和版本。
+
 ### 处理顺序
 
 ```text
 用户站点规则（priority 从高到低）
-→ 内置 GitHub/MediaWiki 识别
+→ 内置 GitHub/MC百科/Read the Docs/MediaWiki 识别
 → MediaWiki 页面特征识别
 → 通用 HTTP 正文提取
 → 白名单中的 Chawan（检测到 JavaScript 空壳页面时）

@@ -79,8 +79,12 @@ data/plugin_data/astrbot_web_explorer/site_rules.json
 |---|---|
 | `github` | GitHub REST API |
 | `mediawiki` | MediaWiki Action API |
+| `mcmod` | MC百科模组、资料页面及站内搜索 |
+| `readthedocs` | Read the Docs 正文及服务端全文搜索 |
 | `wiki` | Wiki 分类，需要配合 `driver` |
 | `code_forge` | 代码托管分类，需要配合 `driver` |
+| `game_wiki` | 游戏百科分类，需要配合 `driver: "mcmod"` |
+| `documentation` | 文档站分类，需要配合 `driver: "readthedocs"` |
 | `generic` | 强制优先使用通用网页读取 |
 | `chawan` | 使用 Chawan；还必须在 WebUI 启用并加入白名单 |
 
@@ -102,7 +106,7 @@ data/plugin_data/astrbot_web_explorer/site_rules.json
 }
 ```
 
-直接填写 `adapter: "mediawiki"` 或 `adapter: "github"` 时可以省略 `driver`。
+直接填写 `adapter: "mediawiki"`、`adapter: "github"`、`adapter: "mcmod"` 或 `adapter: "readthedocs"` 时可以省略 `driver`。
 
 ### `api_base`
 
@@ -233,7 +237,7 @@ MediaWiki 示例：
 
 ```text
 用户站点规则（priority 从高到低）
-→ 内置 GitHub/MediaWiki 识别
+→ 内置 GitHub/MC百科/Read the Docs/MediaWiki 识别
 → MediaWiki 页面特征识别
 → 通用 HTTP 和正文提取
 → 白名单中的 Chawan（仅在检测到 JS 空壳页面时）

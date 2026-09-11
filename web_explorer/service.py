@@ -4,7 +4,13 @@ import logging
 import re
 from urllib.parse import urlsplit
 
-from .adapters import GenericAdapter, GitHubAdapter, MediaWikiAdapter
+from .adapters import (
+    GenericAdapter,
+    GitHubAdapter,
+    McmodAdapter,
+    MediaWikiAdapter,
+    ReadTheDocsAdapter,
+)
 from .cache import PageCache
 from .chawan import ChawanRenderer
 from .errors import UnsupportedTargetError, WebExplorerError
@@ -22,11 +28,15 @@ class WebExplorerService:
         self.chawan = ChawanRenderer(settings)
         self.generic = GenericAdapter(self.client, settings, self.chawan)
         self.github = GitHubAdapter(self.client, settings)
+        self.mcmod = McmodAdapter(self.client, settings)
         self.mediawiki = MediaWikiAdapter(self.client, settings)
+        self.readthedocs = ReadTheDocsAdapter(self.client, settings)
         self.adapters = {
             "generic": self.generic,
             "github": self.github,
+            "mcmod": self.mcmod,
             "mediawiki": self.mediawiki,
+            "readthedocs": self.readthedocs,
         }
         assert settings.site_rules_path is not None
         self.rules = SiteRuleStore(settings.site_rules_path)
@@ -109,7 +119,7 @@ class WebExplorerService:
                     exc,
                 )
 
-        for adapter in (self.github, self.mediawiki):
+        for adapter in (self.github, self.mcmod, self.readthedocs, self.mediawiki):
             if not adapter.can_handle(normalized_url):
                 continue
             try:
@@ -136,6 +146,11 @@ class WebExplorerService:
                 page = await self.mediawiki.open(normalized_url)
             except WebExplorerError as exc:
                 self.logger.info("MediaWiki auto-detection fallback failed: %s", exc)
+        elif page.metadata.get("detected_engine") == "readthedocs":
+            try:
+                page = await self.readthedocs.open(normalized_url)
+            except WebExplorerError as exc:
+                self.logger.info("Read the Docs auto-detection fallback failed: %s", exc)
         return self.cache.put(scope, self._normalize_page(page))
 
     async def search(
@@ -150,6 +165,14 @@ class WebExplorerService:
         site_value = site.strip()
         if site_value.lower() in {"github", "github.com", "https://github.com"}:
             return await self.github.search(query, "https://github.com", kind)
+        if site_value.lower() in {
+            "mcmod",
+            "mcmod.cn",
+            "www.mcmod.cn",
+            "https://mcmod.cn",
+            "https://www.mcmod.cn",
+        }:
+            return await self.mcmod.search(query, "https://www.mcmod.cn", kind)
         site_url = self.normalize_url(site_value)
         self.client.validate_url(site_url)
         for rule in self._matching_rules(site_url):
@@ -167,9 +190,15 @@ class WebExplorerService:
                     raise
         if self.github.can_handle(site_url):
             return await self.github.search(query, site_url, kind)
+        if self.mcmod.can_handle(site_url):
+            return await self.mcmod.search(query, site_url, kind)
+        if self.readthedocs.can_handle(site_url):
+            return await self.readthedocs.search(query, site_url, kind)
         if self.mediawiki.can_handle(site_url):
             return await self.mediawiki.search(query, site_url, kind)
         try:
+            if await self._detect_readthedocs(site_url):
+                return await self.readthedocs.search(query, site_url, kind)
             discovered = await self.mediawiki.discover(site_url)
         except WebExplorerError as exc:
             raise UnsupportedTargetError(
@@ -178,6 +207,13 @@ class WebExplorerService:
         if discovered:
             return await self.mediawiki.search(query, site_url, kind)
         raise UnsupportedTargetError("该网站没有可用的搜索适配器。")
+
+    async def _detect_readthedocs(self, url: str) -> bool:
+        try:
+            response = await self.client.get(url, headers={"Accept": "text/html"})
+        except WebExplorerError:
+            return False
+        return self.readthedocs.detect_html(response.text())
 
     async def follow(self, scope: str, page_id: str, link_id: str) -> WebPage:
         page = self.cache.get(scope, page_id.strip())

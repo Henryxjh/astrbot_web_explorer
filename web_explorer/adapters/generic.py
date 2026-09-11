@@ -60,6 +60,10 @@ class GenericAdapter(WebAdapter):
                 and "mediawiki" in lower
             ):
                 page.metadata["detected_engine"] = "mediawiki"
+            if 'name="readthedocs-project-slug"' in lower or (
+                "name='readthedocs-project-slug'" in lower
+            ):
+                page.metadata["detected_engine"] = "readthedocs"
             return page
         if "json" in content_type:
             try:
