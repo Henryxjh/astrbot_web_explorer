@@ -21,22 +21,168 @@
 
 ## 站点规则
 
-插件首次启动会在自己的 AstrBot 数据目录创建 `site_rules.json`。也可以复制仓库中的 `site_rules.example.json`，然后在 WebUI 配置其绝对路径。
+插件首次启动会创建：
 
-完整字段、匹配顺序和填写示例见 [站点规则 JSON 配置文档](docs/site-rules.md)。
+```text
+data/plugin_data/astrbot_web_explorer/site_rules.json
+```
 
-规则修改后会在下一次网页请求时自动重载。支持精确域名和 `*.example.com`，匹配顺序由 `priority` 决定。分类及驱动别名：
+也可以在 WebUI 的“站点规则文件路径”填写其他绝对路径。规则修改后会在下一次网页请求时自动重载，不需要重启插件。
+
+空配置格式：
 
 ```json
 {
-  "host": "wiki.example.com",
-  "adapter": "wiki",
-  "driver": "mediawiki",
-  "api_base": "https://wiki.example.com/api.php"
+  "version": 1,
+  "sites": []
 }
 ```
 
-`fallback=false` 表示指定适配器失败时直接报错；默认会继续尝试通用读取。
+完整规则格式：
+
+```json
+{
+  "version": 1,
+  "sites": [
+    {
+      "host": "wiki.example.com",
+      "adapter": "wiki",
+      "driver": "mediawiki",
+      "api_base": "https://wiki.example.com/api.php",
+      "priority": 100,
+      "fallback": true,
+      "enabled": true,
+      "options": {}
+    }
+  ]
+}
+```
+
+### 规则字段
+
+- `host`：必填，只填写域名，不能包含协议、端口或路径。
+- `adapter`：必填，指定分类或适配器。
+- `driver`：分类的具体实现；直接填写具体适配器时可以省略。
+- `api_base`：可选，用于覆盖自动发现的 API 地址。
+- `priority`：可选整数，默认 `100`；数值较大的规则优先。
+- `fallback`：可选布尔值，默认 `true`；失败后继续尝试下一规则或通用读取。设置为 `false` 时直接报错。
+- `enabled`：可选布尔值，默认 `true`；设置为 `false` 可临时停用。
+- `options`：可选对象，保留给对应适配器的站点级选项。
+
+当前可填写的 `adapter`：
+
+| adapter | driver | 用途 |
+|---|---|---|
+| `github` | 可省略 | GitHub REST API |
+| `code_forge` | `github` | GitHub 分类写法 |
+| `mediawiki` | 可省略 | MediaWiki Action API |
+| `wiki` | `mediawiki` | Wiki 分类写法 |
+| `generic` | 可省略 | 通用网页读取 |
+| `chawan` | 可省略 | Chawan 渲染，仍需在 WebUI 启用和加入白名单 |
+
+### 域名匹配
+
+精确域名：
+
+```json
+"host": "wiki.example.com"
+```
+
+所有子域名：
+
+```json
+"host": "*.example.com"
+```
+
+`*.example.com` 不会匹配根域名 `example.com`。需要匹配根域名时应另外增加一条规则。
+
+### MediaWiki 示例
+
+自动发现 API 地址：
+
+```json
+{
+  "version": 1,
+  "sites": [
+    {
+      "host": "wiki.example.com",
+      "adapter": "wiki",
+      "driver": "mediawiki",
+      "priority": 100,
+      "fallback": true,
+      "enabled": true,
+      "options": {}
+    }
+  ]
+}
+```
+
+如果站点使用非标准路径，可以增加：
+
+```json
+"api_base": "https://wiki.example.com/custom/api.php"
+```
+
+### 多规则及优先级示例
+
+先尝试 MediaWiki，失败后使用通用读取：
+
+```json
+{
+  "version": 1,
+  "sites": [
+    {
+      "host": "wiki.example.com",
+      "adapter": "mediawiki",
+      "priority": 200,
+      "fallback": true
+    },
+    {
+      "host": "wiki.example.com",
+      "adapter": "generic",
+      "priority": 100
+    }
+  ]
+}
+```
+
+### Chawan 示例
+
+```json
+{
+  "version": 1,
+  "sites": [
+    {
+      "host": "dynamic.example.com",
+      "adapter": "chawan",
+      "priority": 200,
+      "fallback": true,
+      "enabled": true,
+      "options": {}
+    }
+  ]
+}
+```
+
+还需要在 WebUI 中启用 Chawan，并把 `dynamic.example.com` 加入 Chawan 域名白名单；需要执行脚本时再开启 JavaScript。仅填写 JSON 不会绕过白名单。
+
+### 处理顺序
+
+```text
+用户站点规则（priority 从高到低）
+→ 内置 GitHub/MediaWiki 识别
+→ MediaWiki 页面特征识别
+→ 通用 HTTP 正文提取
+→ 白名单中的 Chawan（检测到 JavaScript 空壳页面时）
+```
+
+可以使用下面的命令检查 JSON 语法：
+
+```bash
+python -m json.tool /path/to/site_rules.json
+```
+
+JSON 必须使用双引号，最后一个字段后不能带逗号。如果热重载的新文件无效，插件会继续使用上一次成功加载的规则，并在日志中写入警告。
 
 ## GitHub Token
 
