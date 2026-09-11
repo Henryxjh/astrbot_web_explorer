@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "sites": [
+    {
+      "host": "wiki.example.com",
+      "adapter": "wiki",
+      "driver": "mediawiki",
+      "api_base": "https://wiki.example.com/api.php",
+      "priority": 100,
+      "fallback": true,
+      "enabled": true,
+      "options": {}
+    },
+    {
+      "host": "github.example.invalid",
+      "adapter": "generic",
+      "priority": 10,
+      "fallback": true,
+      "enabled": false,
+      "options": {}
+    }
+  ]
+}
+

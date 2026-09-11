@@ -1,0 +1,97 @@
+{
+  "github_token": {
+    "description": "GitHub Token（可选）",
+    "type": "string",
+    "default": "",
+    "hint": "提高 GitHub API 限额，或读取已授权的私有仓库。建议使用仅具读取权限的 fine-grained PAT。",
+    "obvious_hint": true
+  },
+  "site_rules_path": {
+    "description": "站点规则文件路径（可选）",
+    "type": "string",
+    "default": "",
+    "hint": "留空时使用 data/plugin_data/astrbot_web_explorer/site_rules.json；文件修改后会自动重载。"
+  },
+  "request_timeout": {
+    "description": "HTTP 请求总超时（秒）",
+    "type": "float",
+    "default": 20.0
+  },
+  "max_download_bytes": {
+    "description": "单次响应最大下载字节数",
+    "type": "int",
+    "default": 2097152,
+    "hint": "默认 2 MiB，包含解压后的响应正文。"
+  },
+  "max_content_chars": {
+    "description": "返回给模型的页面正文最大字符数",
+    "type": "int",
+    "default": 30000
+  },
+  "max_links": {
+    "description": "每页最多返回的链接数",
+    "type": "int",
+    "default": 100
+  },
+  "max_redirects": {
+    "description": "最大重定向次数",
+    "type": "int",
+    "default": 5
+  },
+  "search_limit": {
+    "description": "站内搜索最大结果数",
+    "type": "int",
+    "default": 10
+  },
+  "cache_ttl_seconds": {
+    "description": "会话页面缓存有效时间（秒）",
+    "type": "float",
+    "default": 1800.0
+  },
+  "cache_max_pages": {
+    "description": "全局最多缓存页面数",
+    "type": "int",
+    "default": 100
+  },
+  "allow_private_network": {
+    "description": "允许访问本机和内网地址",
+    "type": "bool",
+    "default": false,
+    "hint": "默认关闭以防止 SSRF。启用后网页工具可能访问 AstrBot 主机能够连接的内网服务。"
+  },
+  "user_agent": {
+    "description": "HTTP User-Agent",
+    "type": "string",
+    "default": "AstrBot-Web-Explorer/0.1",
+    "hint": "部分站点（尤其 Wikimedia）要求 User-Agent 包含可联系信息，可按其访问政策填写项目网址或邮箱。"
+  },
+  "chawan_enabled": {
+    "description": "启用实验性 Chawan 渲染后端",
+    "type": "bool",
+    "default": false,
+    "hint": "默认关闭；只有白名单域名可使用。"
+  },
+  "chawan_executable": {
+    "description": "Chawan 可执行文件",
+    "type": "string",
+    "default": "cha"
+  },
+  "chawan_timeout": {
+    "description": "Chawan 渲染超时（秒）",
+    "type": "float",
+    "default": 20.0
+  },
+  "chawan_scripting": {
+    "description": "允许 Chawan 执行网页 JavaScript",
+    "type": "bool",
+    "default": false
+  },
+  "chawan_allowed_hosts": {
+    "description": "允许使用 Chawan 的域名白名单",
+    "type": "list",
+    "items": {
+      "type": "string"
+    },
+    "hint": "支持精确域名和 *.example.com；空列表表示任何网站都不能调用 Chawan。"
+  }
+}

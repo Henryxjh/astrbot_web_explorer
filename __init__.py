@@ -1,0 +1,1 @@
+"""AstrBot Web Explorer plugin."""
