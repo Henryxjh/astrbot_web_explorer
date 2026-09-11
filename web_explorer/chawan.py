@@ -1,11 +1,53 @@
 from __future__ import annotations
 
 import asyncio
+import re
+import unicodedata
 from urllib.parse import urlsplit
 
 from .errors import ResponseTooLargeError, WebExplorerError
 from .models import WebPage
 from .settings import ExplorerSettings
+
+_ANSI_OSC_RE = re.compile(r"\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)")
+_ANSI_STRING_RE = re.compile(r"\x1b[PX^_].*?\x1b\\", re.DOTALL)
+_ANSI_CSI_RE = re.compile(r"\x1b(?:\[[0-?]*[ -/]*[@-~]|[@-Z\\-_])")
+_IMAGE_MARKER_RE = re.compile(r"\[img\]", re.IGNORECASE)
+_LAYOUT_GLYPH_RE = re.compile(r"[\u2500-\u259f]+")
+_HORIZONTAL_SPACE_RE = re.compile(r"[^\S\n]+")
+_EXCESS_BLANK_LINES_RE = re.compile(r"\n{3,}")
+
+
+def clean_chawan_dump(value: str) -> str:
+    """Turn Chawan's terminal-oriented dump into compact model-readable text."""
+    text = value.replace("\r\n", "\n").replace("\r", "\n")
+    text = _ANSI_OSC_RE.sub("", text)
+    text = _ANSI_STRING_RE.sub("", text)
+    text = _ANSI_CSI_RE.sub("", text)
+
+    # Backspace is sometimes used to overprint terminal glyphs.
+    while "\b" in text:
+        updated = re.sub(r"[^\n]\x08", "", text)
+        if updated == text:
+            text = text.replace("\b", "")
+            break
+        text = updated
+
+    text = _IMAGE_MARKER_RE.sub("", text)
+    text = _LAYOUT_GLYPH_RE.sub(" ", text)
+    text = "".join(
+        char
+        for char in text
+        if char in "\n\t" or unicodedata.category(char) not in {"Cc", "Cf"}
+    )
+    lines = []
+    for line in text.splitlines():
+        line = _HORIZONTAL_SPACE_RE.sub(" ", line).strip()
+        # Chawan may leave a bare image link or list bullet after hiding an image.
+        if re.fullmatch(r"(?:[•*+-]\s*)?\[\d+\]|[•*+-]", line):
+            continue
+        lines.append(line)
+    return _EXCESS_BLANK_LINES_RE.sub("\n\n", "\n".join(lines)).strip()
 
 
 def _host_matches(hostname: str, pattern: str) -> bool:
@@ -34,9 +76,14 @@ class ChawanRenderer:
             raise WebExplorerError("Chawan 未启用，或目标域名不在 Chawan 白名单中。")
         args = [
             self.settings.chawan_executable,
+            "-M",
             "-d",
             "-o",
             "buffer.mark-links=true",
+            "-o",
+            "buffer.styling=false",
+            "-o",
+            "display.format-mode=[]",
         ]
         if self.settings.chawan_scripting:
             args.extend(["-o", "buffer.scripting=true"])
@@ -86,7 +133,7 @@ class ChawanRenderer:
         if return_code != 0:
             detail = stderr.decode("utf-8", errors="replace").strip()[:500]
             raise WebExplorerError(f"Chawan 渲染失败（{return_code}）：{detail}")
-        text = stdout.decode("utf-8", errors="replace").strip()
+        text = clean_chawan_dump(stdout.decode("utf-8", errors="replace"))
         truncated = len(text) > self.settings.max_content_chars
         if truncated:
             text = text[: self.settings.max_content_chars].rstrip() + "\n\n[正文已截断]"

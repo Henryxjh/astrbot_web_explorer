@@ -6,6 +6,7 @@ import unittest
 from pathlib import Path
 
 from web_explorer.cache import PageCache
+from web_explorer.chawan import clean_chawan_dump
 from web_explorer.errors import UnsafeTargetError, WebExplorerError
 from web_explorer.extract import extract_html_page
 from web_explorer.http_client import SafeHttpClient
@@ -76,6 +77,20 @@ class ExtractorTest(unittest.TestCase):
         self.assertNotIn("navigation", page.content)
         self.assertNotIn("secret", page.content)
         self.assertEqual(page.links[0].url, "https://example.com/next")
+
+
+class ChawanDumpTest(unittest.TestCase):
+    def test_removes_terminal_and_layout_noise(self) -> None:
+        dump = (
+            "\x1b[31m标题\x1b[0m\r\n"
+            "│  正文       内容  │\n"
+            "[img] [12]链接\n"
+            "[13]\n• [14]\n•\n\n\n\n下一段\x00"
+        )
+        self.assertEqual(
+            clean_chawan_dump(dump),
+            "标题\n正文 内容\n[12]链接\n\n下一段",
+        )
 
 
 class CacheTest(unittest.TestCase):
