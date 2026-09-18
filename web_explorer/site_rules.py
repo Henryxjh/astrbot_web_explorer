@@ -30,6 +30,7 @@ class SiteRule:
             ("code_forge", "github"): "github",
             ("game_wiki", "mcmod"): "mcmod",
             ("documentation", "readthedocs"): "readthedocs",
+            ("package_index", "arch_packages"): "arch_packages",
         }
         return aliases.get((adapter, driver), driver or adapter)
 

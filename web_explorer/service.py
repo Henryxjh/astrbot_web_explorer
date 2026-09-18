@@ -5,6 +5,7 @@ import re
 from urllib.parse import urlsplit
 
 from .adapters import (
+    ArchPackagesAdapter,
     GenericAdapter,
     GitHubAdapter,
     McmodAdapter,
@@ -31,7 +32,9 @@ class WebExplorerService:
         self.mcmod = McmodAdapter(self.client, settings)
         self.mediawiki = MediaWikiAdapter(self.client, settings)
         self.readthedocs = ReadTheDocsAdapter(self.client, settings)
+        self.arch_packages = ArchPackagesAdapter(self.client, settings)
         self.adapters = {
+            "arch_packages": self.arch_packages,
             "generic": self.generic,
             "github": self.github,
             "mcmod": self.mcmod,
@@ -119,7 +122,13 @@ class WebExplorerService:
                     exc,
                 )
 
-        for adapter in (self.github, self.mcmod, self.readthedocs, self.mediawiki):
+        for adapter in (
+            self.github,
+            self.mcmod,
+            self.arch_packages,
+            self.readthedocs,
+            self.mediawiki,
+        ):
             if not adapter.can_handle(normalized_url):
                 continue
             try:
@@ -173,6 +182,8 @@ class WebExplorerService:
             "https://www.mcmod.cn",
         }:
             return await self.mcmod.search(query, "https://www.mcmod.cn", kind)
+        if site_value.lower() in {"arch", "arch-official", "aur"}:
+            return await self.arch_packages.search(query, site_value.lower(), kind)
         site_url = self.normalize_url(site_value)
         self.client.validate_url(site_url)
         for rule in self._matching_rules(site_url):
@@ -192,6 +203,8 @@ class WebExplorerService:
             return await self.github.search(query, site_url, kind)
         if self.mcmod.can_handle(site_url):
             return await self.mcmod.search(query, site_url, kind)
+        if self.arch_packages.can_handle(site_url):
+            return await self.arch_packages.search(query, site_url, kind)
         if self.readthedocs.can_handle(site_url):
             return await self.readthedocs.search(query, site_url, kind)
         if self.mediawiki.can_handle(site_url):

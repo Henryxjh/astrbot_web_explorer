@@ -5,6 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from web_explorer.adapters.arch_packages import ArchPackagesAdapter
 from web_explorer.adapters.mcmod import McmodAdapter
 from web_explorer.adapters.readthedocs import ReadTheDocsAdapter
 from web_explorer.cache import PageCache
@@ -92,6 +93,101 @@ class ChawanDumpTest(unittest.TestCase):
         self.assertEqual(
             clean_chawan_dump(dump),
             "标题\n正文 内容\n[12]链接\n\n下一段",
+        )
+
+
+class ArchPackagesAdapterTest(unittest.TestCase):
+    def setUp(self) -> None:
+        settings = ExplorerSettings(search_limit=10)
+        self.adapter = ArchPackagesAdapter(SafeHttpClient(settings), settings)
+
+    def test_official_exact_match_is_ranked_first(self) -> None:
+        results = self.adapter.parse_official_search(
+            {
+                "results": [
+                    {
+                        "pkgname": "pacman-contrib",
+                        "repo": "extra",
+                        "arch": "x86_64",
+                        "pkgver": "1.13.0",
+                        "pkgrel": "1",
+                        "pkgdesc": "Contributed scripts",
+                        "maintainers": ["alice"],
+                    },
+                    {
+                        "pkgname": "pacman",
+                        "repo": "core",
+                        "arch": "x86_64",
+                        "pkgver": "7.1.0",
+                        "pkgrel": "2",
+                        "pkgdesc": "Package manager",
+                        "maintainers": ["bob"],
+                    },
+                ]
+            },
+            "pacman",
+            "arch-official",
+        )
+        self.assertEqual(results.items[0].item_type, "arch_official")
+        self.assertIn(" pacman 7.1.0-2", results.items[0].title)
+        self.assertEqual(
+            results.items[0].url,
+            "https://archlinux.org/packages/core/x86_64/pacman/",
+        )
+
+    def test_aur_exact_match_precedes_popularity(self) -> None:
+        results = self.adapter.parse_aur_search(
+            {
+                "type": "search",
+                "results": [
+                    {
+                        "Name": "paru-bin",
+                        "Version": "2.0-1",
+                        "Popularity": 100,
+                        "NumVotes": 1000,
+                        "Maintainer": "alice",
+                    },
+                    {
+                        "Name": "paru",
+                        "Version": "2.1-1",
+                        "Popularity": 5,
+                        "NumVotes": 100,
+                        "Maintainer": None,
+                    },
+                ],
+            },
+            "paru",
+            "aur",
+        )
+        self.assertEqual(results.items[0].title, "[AUR] paru 2.1-1")
+        self.assertIn("孤儿包", results.items[0].snippet)
+        self.assertIn("检查 PKGBUILD", results.items[0].snippet)
+
+    def test_aur_detail_contains_security_warning_and_links(self) -> None:
+        page = self.adapter._aur_page(
+            {
+                "Name": "example-git",
+                "PackageBase": "example-git",
+                "Version": "1.0.r1-1",
+                "Description": "Example package",
+                "Maintainer": "alice",
+                "URL": "https://example.com/project",
+                "NumVotes": 3,
+                "Popularity": 0.5,
+            },
+            "https://aur.archlinux.org/packages/example-git/",
+        )
+        self.assertIn("不属于 Arch Linux 官方仓库", page.content)
+        self.assertIn("安装前应检查 PKGBUILD", page.content)
+        self.assertEqual(page.metadata["source"], "aur")
+        self.assertEqual(page.links[1].text, "AUR Git 仓库")
+
+    def test_mode_aliases(self) -> None:
+        self.assertEqual(self.adapter._mode("arch", "auto"), "all")
+        self.assertEqual(self.adapter._mode("arch-official", "auto"), "official")
+        self.assertEqual(self.adapter._mode("aur", "auto"), "aur")
+        self.assertEqual(
+            self.adapter._mode("https://aur.archlinux.org", "auto"), "aur"
         )
 
 

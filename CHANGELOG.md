@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.0
+
+- 增加 Arch Linux 官方仓库与 AUR 软件包搜索。
+- 支持通过 `arch` 合并搜索，通过 `arch-official` 或 `aur` 单独搜索。
+- 增加官方包和 AUR 包的结构化详情读取，并对 AUR 结果显示安全提示。
+
 ## 0.3.0
 
 - 增加 Read the Docs 专用正文适配器，兼容经典主题和 Furo 等现代主题。

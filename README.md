@@ -1,11 +1,11 @@
 # AstrBot 网页探索器
 
-为 AstrBot 提供模块化的只读网页探索能力。内置 GitHub、MediaWiki、MC百科、Read the Docs、通用网页读取，以及默认关闭的 Chawan 兜底。
+为 AstrBot 提供模块化的只读网页探索能力。内置 GitHub、Arch Linux 官方仓库/AUR、MediaWiki、MC百科、Read the Docs、通用网页读取，以及默认关闭的 Chawan 兜底。
 
 ## 工具
 
 - `open_web_page`：读取 URL，返回正文、页面 ID 和编号链接。
-- `search_web_site`：搜索 GitHub、MediaWiki、MC百科或 Read the Docs；GitHub 支持 `repositories`、`issues`、`code`、`commits`。
+- `search_web_site`：搜索 GitHub、Arch Linux 官方仓库/AUR、MediaWiki、MC百科或 Read the Docs；GitHub 支持 `repositories`、`issues`、`code`、`commits`。
 - `follow_web_link`：通过页面 ID 和 `L1` 形式的链接编号继续访问。
 - `find_in_web_page`：在会话缓存页面中查找文字。
 
@@ -17,6 +17,9 @@
 /websearch https://wiki.archlinux.org systemd
 /websearch https://www.mcmod.cn Applied Energistics
 /websearch https://mcmod.readthedocs.io 模组添加
+/websearch arch pacman
+/websearch arch-official linux
+/websearch aur paru
 /webfollow p_ab12cd34 L1
 /webfind p_ab12cd34 websocket
 ```
@@ -83,6 +86,8 @@ data/plugin_data/astrbot_web_explorer/site_rules.json
 | `game_wiki` | `mcmod` | MC百科分类写法 |
 | `readthedocs` | 可省略 | Read the Docs 正文及服务端全文搜索 |
 | `documentation` | `readthedocs` | 文档站分类写法 |
+| `arch_packages` | 可省略 | Arch 官方仓库与 AUR 软件包 API |
+| `package_index` | `arch_packages` | 软件包索引分类写法 |
 | `generic` | 可省略 | 通用网页读取 |
 | `chawan` | 可省略 | Chawan 渲染，仍需在 WebUI 启用和加入白名单 |
 
@@ -204,11 +209,31 @@ MC百科默认会自动使用专用适配器。如果曾为它配置 Chawan，�
 
 站内搜索使用 Read the Docs v3 服务端搜索 API，并自动限定到页面元数据声明的项目和版本。
 
+### Arch Linux 软件包搜索
+
+无需填写站点规则或 Token，直接使用以下站点别名：
+
+```text
+arch           同时搜索 Arch 官方仓库和 AUR，官方结果排在前面
+arch-official  只搜索 Arch 官方仓库
+aur            只搜索 AUR
+```
+
+例如：
+
+```text
+/websearch arch paru
+/websearch arch-official pacman
+/websearch aur visual-studio-code-bin
+```
+
+也可以直接读取 `https://archlinux.org/packages/...` 和 `https://aur.archlinux.org/packages/...` 软件包详情页。插件只访问公开 API，不会调用本机的 `pacman`、`yay` 或其他 AUR 助手。官方包和 AUR 中的同名包会作为不同结果保留；AUR 是用户维护的软件包，安装前仍需人工检查 PKGBUILD 及相关文件。
+
 ### 处理顺序
 
 ```text
 用户站点规则（priority 从高到低）
-→ 内置 GitHub/MC百科/Read the Docs/MediaWiki 识别
+→ 内置 GitHub/Arch 软件包/MC百科/Read the Docs/MediaWiki 识别
 → MediaWiki 页面特征识别
 → 通用 HTTP 正文提取
 → 白名单中的 Chawan（检测到 JavaScript 空壳页面时）

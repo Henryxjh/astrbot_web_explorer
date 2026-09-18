@@ -55,12 +55,13 @@ class WebExplorerPlugin(Star):
     ) -> str:
         """在具有专用适配器的网站内搜索内容。
 
-        当前支持 GitHub、MediaWiki、MC百科和 Read the Docs。GitHub 的 kind
-        可填写 auto、repositories、issues、code 或 commits；其他网站填写 auto。
+        当前支持 GitHub、Arch 官方仓库/AUR、MediaWiki、MC百科和 Read the Docs。
+        GitHub 的 kind 可填写 auto、repositories、issues、code 或 commits；Arch
+        搜索可填写 auto、all、official 或 aur；其他网站填写 auto。
 
         Args:
             query(string): 搜索关键词和限定条件。
-            site(string): github、github.com、仓库 URL 或 Wiki 站点 URL。
+            site(string): github、arch、arch-official、aur、仓库 URL 或站点 URL。
             kind(string): 搜索类型；不确定时填写 auto。
         """
         del event
