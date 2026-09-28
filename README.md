@@ -1,6 +1,6 @@
 # AstrBot 网页探索器
 
-为 AstrBot 提供模块化的只读网页探索能力。内置 GitHub、Arch Linux 官方仓库/AUR、MediaWiki、MC百科、Read the Docs、通用网页读取，以及默认关闭的 Chawan 兜底。
+为 AstrBot 提供模块化的只读网页探索能力。内置 GitHub、Arch Linux 官方仓库/AUR、MediaWiki、MC百科、Read the Docs、通用网页读取、可选 Qt WebEngine 截图，以及默认关闭的 Chawan 兜底。
 
 ## 工具
 
@@ -8,6 +8,7 @@
 - `search_web_site`：搜索 GitHub、Arch Linux 官方仓库/AUR、MediaWiki、MC百科或 Read the Docs；GitHub 支持 `repositories`、`issues`、`code`、`commits`。
 - `follow_web_link`：通过页面 ID 和 `L1` 形式的链接编号继续访问。
 - `find_in_web_page`：在会话缓存页面中查找文字。
+- `capture_web_page`：截取固定 800×800 网页视图，以多模态工具结果交给视觉模型。
 
 测试指令：
 
@@ -22,7 +23,60 @@
 /websearch aur paru
 /webfollow p_ab12cd34 L1
 /webfind p_ab12cd34 websocket
+/webshot https://example.com
+/webshot https://example.com --width 1280 --max-height 8000
 ```
+
+## 网页截图
+
+截图后端使用 Selenium 调用与 Qt WebEngine 版本匹配的 `webenginedriver`。Selenium 会通过插件依赖安装；系统还需要提供 Xvfb、Driver 和一个接受 WebEngineDriver 控制的 Qt WebEngine 浏览器。
+
+核心配置示例：
+
+```text
+启用网页截图：是
+WebEngineDriver：/usr/lib/qt6/webenginedriver
+Qt WebEngine 浏览器：/path/to/simple-qt-webbrowser
+截图浏览器 DISPLAY：留空
+允许截图的域名：example.com、*.wikipedia.org
+```
+
+`DISPLAY` 留空时插件会为截图浏览器启动独立的 `1920×1080` Xvfb，并在插件退出时关闭。浏览器与 Driver 必须来自相互兼容的 Qt WebEngine/Chromium 版本。
+
+### 模型截图
+
+`capture_web_page` 始终生成一张 800×800 PNG，通过 AstrBot 的 `CallToolResult/ImageContent` 直接放入下一轮多模态上下文，不会自动发送给 QQ 用户。当前模型提供商必须支持图片输入。
+
+### 用户截图指令
+
+```text
+/webshot <URL>
+/webshot <URL> --width 1280
+/webshot <URL> --max-height 8000
+/webshot <URL> --width 1280 --max-height 8000
+```
+
+- 无需 @ 机器人。
+- `--width` 是页面布局宽度，允许 `320～2560`。
+- `--max-height` 是单张长图的最大高度，允许 `240～16000`。
+- 实际高度取文档高度、最大高度和总像素限制中的最小值。
+- 页面超过限制时会截断并在图片后提示。
+- 未填写参数时使用 WebUI 默认值。
+
+页面扩大后，插件最多等待配置的稳定时间，期间检查字体、当前视口图片和文档高度；高度最多修正两次。达到时间上限后直接截取当前状态，不会主动滚动触发懒加载。
+
+### 截图白名单及重定向
+
+截图功能使用独立域名白名单：
+
+```text
+example.com        只允许该域名
+*.example.com      只允许其子域名，不包含 example.com 本身
+```
+
+空白名单禁止所有网页截图。插件会检查初始 URL、DNS 解析地址以及页面加载后的最终 URL；配套 Qt 浏览器还会在每次主框架导航发出前检查白名单，因此 HTTP 重定向、Meta Refresh 和 JavaScript 跳转后的域名也必须获得授权。
+
+浏览器请求拦截器允许公网 HTTP/HTTPS 子资源，同时拒绝危险协议、`localhost` 和显式私有 IP。域名解析到私有地址的检查由插件完成；如需更强的子资源 DNS 隔离，应另外使用受限代理或网络命名空间。
 
 ## 站点规则
 
@@ -255,4 +309,4 @@ JSON 必须使用双引号，最后一个字段后不能带逗号。如果热重
 
 默认拒绝本机、内网、链路本地及其他保留地址，并在每次 DNS 解析和重定向时重新检查。确实需要读取内网站点时，可以开启 `allow_private_network`，但这会扩大网页工具能够访问的范围。
 
-Chawan 默认关闭，并要求单独配置域名白名单。第一版没有浏览器或 CDP 后端。
+Chawan 和网页截图默认关闭，并分别要求配置域名白名单。截图浏览器应使用专用 Profile 和独立运行用户，不应复用日常浏览器的登录数据。

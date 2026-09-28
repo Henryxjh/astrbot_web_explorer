@@ -14,6 +14,7 @@ from web_explorer.errors import UnsafeTargetError, WebExplorerError
 from web_explorer.extract import extract_html_page
 from web_explorer.http_client import SafeHttpClient
 from web_explorer.models import WebPage
+from web_explorer.screenshot import HostAllowlist, parse_webshot_arguments
 from web_explorer.settings import ExplorerSettings
 from web_explorer.site_rules import SiteRuleStore
 
@@ -94,6 +95,28 @@ class ChawanDumpTest(unittest.TestCase):
             clean_chawan_dump(dump),
             "标题\n正文 内容\n[12]链接\n\n下一段",
         )
+
+
+class ScreenshotConfigurationTest(unittest.TestCase):
+    def test_host_allowlist_exact_wildcard_and_idna(self) -> None:
+        allowlist = HostAllowlist(("example.com", "*.wikipedia.org", "例子.测试"))
+        self.assertTrue(allowlist.matches("EXAMPLE.COM."))
+        self.assertTrue(allowlist.matches("zh.wikipedia.org"))
+        self.assertFalse(allowlist.matches("wikipedia.org"))
+        self.assertFalse(allowlist.matches("fakeexample.com"))
+        self.assertTrue(allowlist.matches("xn--fsqu00a.xn--0zwm56d"))
+
+    def test_parses_webshot_arguments(self) -> None:
+        arguments = parse_webshot_arguments(
+            "https://example.com/path?q=1 --width 1280 --max-height=8000"
+        )
+        self.assertEqual(arguments.url, "https://example.com/path?q=1")
+        self.assertEqual(arguments.width, 1280)
+        self.assertEqual(arguments.max_height, 8000)
+
+    def test_rejects_duplicate_webshot_arguments(self) -> None:
+        with self.assertRaises(WebExplorerError):
+            parse_webshot_arguments("https://example.com --width 800 --width 1024")
 
 
 class ArchPackagesAdapterTest(unittest.TestCase):
@@ -186,9 +209,7 @@ class ArchPackagesAdapterTest(unittest.TestCase):
         self.assertEqual(self.adapter._mode("arch", "auto"), "all")
         self.assertEqual(self.adapter._mode("arch-official", "auto"), "official")
         self.assertEqual(self.adapter._mode("aur", "auto"), "aur")
-        self.assertEqual(
-            self.adapter._mode("https://aur.archlinux.org", "auto"), "aur"
-        )
+        self.assertEqual(self.adapter._mode("https://aur.archlinux.org", "auto"), "aur")
 
 
 class McmodAdapterTest(unittest.TestCase):
@@ -243,9 +264,7 @@ class McmodAdapterTest(unittest.TestCase):
         self.assertEqual(len(results.items), 2)
         self.assertEqual(results.items[0].item_type, "class")
         self.assertEqual(results.items[0].snippet, "自动化与存储")
-        self.assertEqual(
-            results.items[0].url, "https://www.mcmod.cn/class/260.html"
-        )
+        self.assertEqual(results.items[0].url, "https://www.mcmod.cn/class/260.html")
 
 
 class ReadTheDocsAdapterTest(unittest.TestCase):

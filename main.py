@@ -1,11 +1,18 @@
 from __future__ import annotations
 
+import base64
+
+import mcp
 from astrbot.api import AstrBotConfig
-from astrbot.api.event import AstrMessageEvent, filter
+from astrbot.api.event import AstrMessageEvent, MessageChain, filter
 from astrbot.api.star import Context, Star, StarTools
 from astrbot.core.star.filter.command import GreedyStr
 
 from .web_explorer import ExplorerSettings, WebExplorerError, WebExplorerService
+from .web_explorer.screenshot import (
+    BrowserScreenshotService,
+    parse_webshot_arguments,
+)
 
 
 class WebExplorerPlugin(Star):
@@ -17,6 +24,10 @@ class WebExplorerPlugin(Star):
             ExplorerSettings.from_config(config, data_dir),
             self.logger,
         )
+        self.screenshots = BrowserScreenshotService(
+            self.service.settings,
+            self.logger,
+        )
 
     async def initialize(self) -> None:
         await self.service.initialize()
@@ -24,6 +35,11 @@ class WebExplorerPlugin(Star):
             "Web Explorer initialized; site rules: %s",
             self.service.settings.site_rules_path,
         )
+        if self.screenshots.enabled:
+            self.logger.info(
+                "Web screenshot enabled; allowed hosts: %s",
+                ", ".join(self.screenshots.allowlist.patterns) or "[none]",
+            )
 
     @staticmethod
     def _scope(event: AstrMessageEvent) -> str:
@@ -112,6 +128,48 @@ class WebExplorerPlugin(Star):
         except WebExplorerError as exc:
             return f"页面查找失败：{exc}"
 
+    @filter.llm_tool(name="capture_web_page")
+    async def capture_web_page(
+        self,
+        event: AstrMessageEvent,
+        url: str,
+    ) -> mcp.types.CallToolResult:
+        """截取网页当前顶部的 800×800 视图，并把图片返回给视觉模型检查。
+
+        仅在需要观察网页视觉布局、画面或动态渲染结果时调用。读取网页文字时优先使用
+        open_web_page。截图不会自动发送给用户。
+
+        Args:
+            url(string): 要截图的完整 http/https 网页地址。
+        """
+        del event
+        try:
+            screenshot = await self.screenshots.capture_for_model(url)
+            text = (
+                f"网页截图完成：{screenshot.width}×{screenshot.height}；"
+                f"最终 URL：{screenshot.url}。请查看随工具结果返回的图片。"
+            )
+            return mcp.types.CallToolResult(
+                content=[
+                    mcp.types.TextContent(type="text", text=text),
+                    mcp.types.ImageContent(
+                        type="image",
+                        data=base64.b64encode(screenshot.png).decode("ascii"),
+                        mimeType="image/png",
+                    ),
+                ]
+            )
+        except WebExplorerError as exc:
+            return mcp.types.CallToolResult(
+                content=[
+                    mcp.types.TextContent(
+                        type="text",
+                        text=f"网页截图失败：{exc}",
+                    )
+                ],
+                isError=True,
+            )
+
     @filter.command("webopen")
     async def webopen_command(self, event: AstrMessageEvent, value: GreedyStr):
         """测试网页读取：/webopen URL"""
@@ -188,5 +246,41 @@ class WebExplorerPlugin(Star):
         ):
             yield result
 
+    @filter.command("webshot")
+    async def webshot_command(self, event: AstrMessageEvent, value: GreedyStr):
+        """网页截图：/webshot URL [--width N] [--max-height N]"""
+        event.stop_event()
+        try:
+            arguments = parse_webshot_arguments(str(value).strip())
+            screenshot = await self.screenshots.capture_for_user(
+                arguments.url,
+                arguments.width,
+                arguments.max_height,
+            )
+        except WebExplorerError as exc:
+            yield event.plain_result(f"网页截图失败：{exc}")
+            return
+
+        caption = f"网页截图：{screenshot.width}×{screenshot.height}"
+        if screenshot.truncated:
+            caption += f"；页面约 {screenshot.document_height}px，已按最大高度截断"
+        chain = MessageChain().base64_image(
+            base64.b64encode(screenshot.png).decode("ascii")
+        )
+        chain.message(caption)
+        yield event.chain_result(chain.chain)
+
+    @filter.regex(r"^/webshot(?:\s|$)")
+    async def webshot_slash_command(self, event: AstrMessageEvent):
+        message = event.get_message_str().strip()
+        async for result in self.webshot_command(
+            event,
+            message[len("/webshot") :],
+        ):
+            yield result
+
     async def terminate(self) -> None:
-        await self.service.close()
+        try:
+            await self.screenshots.close()
+        finally:
+            await self.service.close()

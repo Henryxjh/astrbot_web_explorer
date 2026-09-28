@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.5.0
+
+- 增加基于 Qt WebEngineDriver、Selenium 和 CDP 的网页截图后端。
+- 增加固定 800×800 并以多模态工具结果返回给模型的 `capture_web_page`。
+- 增加无需 @ 的 `/webshot` 指令，支持可选页面宽度和最大高度。
+- 增加截图域名白名单、初始/最终 URL 与 DNS 检查、主框架重定向拦截。
+- 增加单任务截图队列、浏览器异常重建、独立 Xvfb 和有限页面稳定等待。
+
 ## 0.4.0
 
 - 增加 Arch Linux 官方仓库与 AUR 软件包搜索。

@@ -1,6 +1,6 @@
 name: astrbot_web_explorer
 display_name: 网页探索器
-desc: 通过模块化站点适配器和通用正文提取，为 AstrBot 提供安全的网页读取、站内搜索及链接探索工具。
+desc: 通过模块化站点适配器、通用正文提取和可选 Qt WebEngine 截图，为 AstrBot 提供网页读取、站内搜索、链接探索及视觉截图工具。
 author: henry
-version: 0.4.0
+version: 0.5.0
 astrbot_version: ">=4.27.4"

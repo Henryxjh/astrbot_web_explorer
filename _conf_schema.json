@@ -62,7 +62,7 @@
   "user_agent": {
     "description": "HTTP User-Agent",
     "type": "string",
-    "default": "AstrBot-Web-Explorer/0.1",
+    "default": "AstrBot-Web-Explorer/0.5",
     "hint": "部分站点（尤其 Wikimedia）要求 User-Agent 包含可联系信息，可按其访问政策填写项目网址或邮箱。"
   },
   "chawan_enabled": {
@@ -93,5 +93,80 @@
       "type": "string"
     },
     "hint": "支持精确域名和 *.example.com；空列表表示任何网站都不能调用 Chawan。"
+  },
+  "screenshot_enabled": {
+    "description": "启用网页截图功能",
+    "type": "bool",
+    "default": false,
+    "hint": "需要 Qt WebEngine 浏览器、匹配版本的 WebEngineDriver、Selenium，以及可用的 X11 DISPLAY 或 Xvfb。"
+  },
+  "screenshot_webdriver_path": {
+    "description": "WebEngineDriver 可执行文件",
+    "type": "string",
+    "default": "/usr/lib/qt6/webenginedriver"
+  },
+  "screenshot_browser_path": {
+    "description": "Qt WebEngine 浏览器可执行文件",
+    "type": "string",
+    "default": "",
+    "hint": "必须填写 AstrBot 运行用户可以读取并执行的绝对路径。"
+  },
+  "screenshot_display": {
+    "description": "截图浏览器使用的 X11 DISPLAY（可选）",
+    "type": "string",
+    "default": "",
+    "hint": "例如 :99；留空时插件为截图浏览器启动独立的临时 Xvfb。"
+  },
+  "screenshot_xvfb_path": {
+    "description": "Xvfb 可执行文件",
+    "type": "string",
+    "default": "Xvfb"
+  },
+  "screenshot_allowed_hosts": {
+    "description": "允许截图的域名白名单",
+    "type": "list",
+    "items": {
+      "type": "string"
+    },
+    "hint": "支持精确域名和 *.example.com；空列表禁止所有截图导航。重定向后的主框架域名也必须匹配。"
+  },
+  "screenshot_default_width": {
+    "description": "/webshot 默认页面宽度",
+    "type": "int",
+    "default": 1280,
+    "hint": "允许范围为 320～2560 像素。模型截图始终使用 800 像素。"
+  },
+  "screenshot_default_max_height": {
+    "description": "/webshot 默认最大高度",
+    "type": "int",
+    "default": 8000,
+    "hint": "允许范围为 240～16000 像素，仍会受到最大总像素数限制。"
+  },
+  "screenshot_max_pixels": {
+    "description": "单张截图最大总像素数",
+    "type": "int",
+    "default": 12000000
+  },
+  "screenshot_max_png_bytes": {
+    "description": "单张 PNG 最大字节数",
+    "type": "int",
+    "default": 20971520
+  },
+  "screenshot_page_load_timeout": {
+    "description": "截图页面加载超时（秒）",
+    "type": "float",
+    "default": 30.0
+  },
+  "screenshot_settle_timeout": {
+    "description": "扩大视口后的最长稳定等待（秒）",
+    "type": "float",
+    "default": 3.0,
+    "hint": "等待字体、当前视口图片和文档高度稳定；达到上限后直接截取当前状态。"
+  },
+  "screenshot_queue_limit": {
+    "description": "截图队列最大任务数",
+    "type": "int",
+    "default": 5,
+    "hint": "包含正在执行的任务；超过后直接返回繁忙。"
   }
 }
